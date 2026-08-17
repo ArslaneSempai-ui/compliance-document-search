@@ -8,8 +8,15 @@ Everything runs locally: no API key, no external service, nothing leaves the mac
 That constraint is the point. A compliance manual doesn't get shipped to a third party
 just to run a demo.
 
-> **This repository is a write-up, not the source.** The code is private. I'm happy to
-> walk through it, or run the tool live, in a conversation.
+**[Try it in your browser →](https://arslanesempai-ui.github.io/compliance-document-search/)**
+— twenty-five questions, six of which the corpus cannot answer. Those are the ones worth
+clicking.
+
+> **This repository is a write-up and a demo, not the source.** The engine — the chunker,
+> the keyword index, the rank fusion, the PDF reader, the evaluation harness — is private.
+> What is published here is the interface, the corpus, and pre-computed vectors for the
+> evaluation questions: enough to use the thing, not enough to rebuild it. I'm happy to walk
+> through the rest in a conversation.
 
 ---
 
@@ -53,8 +60,8 @@ Hiding it would make the demo look better and the tool worse.
 
 ## What was measured
 
-Over 20 questions written **before** the retrieval engine existed, four of which have no
-answer in the corpus.
+Twenty-five questions written **before** the retrieval engine existed. Six of them have no
+answer in the corpus at all, and four are asked in French of an English corpus.
 
 | Engine | Correct passage ranked 1st | In the top 5 |
 |---|---|---|
@@ -62,26 +69,47 @@ answer in the corpus.
 | **Embeddings** | **75 % [53–89]** | **88 % [70–97]** |
 | Fusion of both | 50 % [30–70] | 56 % [34–74] |
 
-*95 % intervals, n = 20. Embeddings beat keywords on first position — [53–89] against
-[15–52], no overlap, so that one holds. Everything else on this table overlaps with
-everything else: twenty questions cannot rank fusion against either of them, and saying
-otherwise would be reading noise.*
+*95 % intervals. Embeddings beat keywords on first position — [53–89] against [15–52], no
+overlap, so that one holds. Everything else on this table overlaps with everything else:
+twenty questions cannot rank fusion against either of them, and saying otherwise would be
+reading noise. This table records an experiment run once, on the original corpus; it is a
+historical record and is marked as one rather than regenerated.*
 
-At the chosen confidence bar (0.84), three of the four unanswerable questions are
-correctly refused, at the cost of one good answer in sixteen.
+### The bar, and why it is the interesting number
 
-**Four questions is not a measurement.** An earlier version of this page reported that as
-"75 % correctly refused"; the 95 % interval on three out of four runs from 30 % to 95 %.
-The figure has been withdrawn rather than dressed up, and every rate here now carries its
-interval and its sample size. The retrieval figures rest on twenty questions — roughly
-±18 points each.
+The confidence bar below which the tool refuses to answer is **0.84**. No source sets it. It
+is a number I chose, so rather than defend it I measured what moving it buys:
 
-The tool exposes the confidence bar in the interface, labelled by its effects — "answers
-often, even when wrong" at one end, "answers only when confident" at the other. The
-trade-off belongs to the business, not to whoever built the thing.
+- At 0.84, **the tool invents nothing.** All six unanswerable questions are declined.
+- **Lowering the bar buys nothing back.** At 0.82 there are still six refusals — *and three
+  invented answers.* The five questions it declines cannot be recovered by loosening it.
 
-Also tested on **five real PDFs, 312 pages** of bank risk reports and course material:
-618 passages indexed in 13 seconds, zero unreadable files.
+**Six is a count, not a rate.** Six observations put a 95 % interval of [61–100] around any
+percentage drawn from them, which is another way of saying the sample carries no
+information. An earlier version of this page printed "100 % correctly refused". The figure
+is withdrawn rather than dressed up, and the tool now stays silent below twenty
+observations — the rule it already applied to its coverage panel, finally applied to itself.
+
+Right document in first position, on the nineteen answerable questions: **10 of 19
+[32–73]**. That interval is eighteen points wide in each direction, and it is printed
+because it is eighteen points wide.
+
+### The corpus cites real law
+
+The four procedures are written for demonstration and say so on their first line. What is
+*not* invented is the law inside them — eight sections of 31 CFR, each retrieved from the
+source on a recorded date and quoted verbatim:
+
+`1010.230(a)` · `1010.230(d)(1)` · `1010.230(d)(2)` · `1010.311` · `1020.320(a)(2)` ·
+`1020.320(b)(3)` · `1020.320(d)` · `1020.320(e)`
+
+That distinction is the point. I have not run a US AML programme, and writing procedures
+that claimed US requirements from memory would have been the wrong kind of confident. The
+citations vouch for themselves; everything invented around them is marked inline in the
+documents themselves.
+
+Also tested on **five real PDFs, 312 pages** of bank risk reports and course material: 618
+passages indexed in 13 seconds, zero unreadable files.
 
 ---
 
@@ -111,6 +139,11 @@ direction and assume in the other.
 hardcoded while the confidence bar was adjustable. Lower the bar and the tool would
 answer using a passage it simultaneously labelled "distant". A user who reads that stops
 trusting the tool, and is right to.
+
+**Silence has a cost nobody sees.** Click the French question about retention in the demo:
+it is refused at 0.810 against a 0.840 bar, for an answer that *is* in the corpus. An
+invented answer gets corrected by whoever reads it. A withheld one gets worked around, and
+nobody files a complaint about a tool that said nothing.
 
 **"Never cited" means nothing over five questions.** The coverage panel counts where
 answers actually come from, and stays silent until twenty questions have been asked.
@@ -144,5 +177,15 @@ Roughly 1,250 lines, two dependencies: a local embedding model and a PDF reader.
 
 ---
 
-**Arslane Chaouche Ramdane** — six years in AML/KYC and financial crime operations,
-moving into AI transformation work. Happy to demo this live.
+### Where the numbers come from
+
+Every figure on this page is one of four things, and the private repository labels each one
+in code: **retrieved** from a public source with its date, **measured** by running the tool,
+**assumed** as an input a reader would substitute their own, or **chosen** by me. The bar at
+0.84 is chosen — which is exactly why it was measured rather than asserted.
+
+---
+
+**Arslane Chaouche Ramdane** — six years in AML/KYC and financial crime operations, moving
+into BizOps and AI transformation work. The demo above runs entirely in your browser.
+Happy to walk through the engine live.

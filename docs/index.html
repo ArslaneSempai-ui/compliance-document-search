@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Recherche documentaire</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23fbfaf7'/%3E%3Crect x='2' y='4' width='12' height='1' fill='%23111'/%3E%3Crect x='2' y='7' width='12' height='1' fill='%23111'/%3E%3Crect x='2' y='11' width='12' height='2' fill='%23111'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="registre.css" />
+</head>
+<body>
+<main>
+  <div class="haut">
+    <div>
+      <h1 id="h1"></h1>
+      <p class="lede" id="lede"></p>
+    </div>
+    <div class="lang">
+      <button id="fr">FR</button><button id="en">EN</button>
+    </div>
+  </div>
+<p class="renvoi" style="margin-bottom:1.5rem">
+This runs entirely in your browser — no server, no data leaves your machine. The retrieval
+is the real one: same scoring, same bar, same refusal. What is <b>not</b> here is the
+118&nbsp;MB embedding model, so only the 25 evaluation questions below can be asked —
+<b>including the six the corpus cannot answer</b>, which are the ones worth clicking. To ask
+your own, <a href="https://github.com/ArslaneSempai-ui/compliance-document-search">clone the repository</a>.
+</p>
+  <div id="etapes"></div>
+
+  <p class="renvoi" id="provenanceLegende"></p>
+</main>
+
+<script type="module">
+/*
+ * The snapshot loads lazily, not at module top level.
+ *
+ * Two module scripts execute in document order, but a top-level await in the first one
+ * suspends only that module — the second runs straight past it. So a shim that awaited
+ * its data before assigning `window.LOCAL` left the screen's first call going out to a
+ * server that is not there. `window.LOCAL` is assigned synchronously; the fetch happens
+ * on first use.
+ */
+let snapPromise = null;
+const charger = () => (snapPromise ??= fetch("./data/instantane.json").then((r) => r.json()));
+
+const SEUIL_DEFAUT = 0.84;
+let seuil = SEUIL_DEFAUT;
+const citations = {};
+let questions = 0;
+
+const cosinus = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+
+const titreDe = (heading) =>
+  heading.split(" > ").filter((t) => !/^page \\d+$/.test(t)).pop() ?? "";
+
+function chercher(snap, question) {
+  const q = snap.questions[question];
+  if (!q) return null;
+  return snap.chunks
+    .map((chunk, i) => ({ chunk, score: cosinus(q, snap.vecteurs[i]) - (chunk.faible ? 0.05 : 0) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+window.LOCAL = async (chemin, corps) => {
+  const snap = await charger();
+
+  if (chemin === "/api/etat") {
+    return {
+      seuil, pret: true, indexe: true, questions,
+      documents: [...new Set(snap.chunks.map((c) => c.doc))].map((nom) => ({
+        nom, morceaux: snap.chunks.filter((c) => c.doc === nom).length,
+      })),
+      citations, morceaux: snap.chunks.length, ignores: [],
+      demo: snap.demo,
+    };
+  }
+
+  if (chemin === "/api/couverture") {
+    return [...new Set(snap.chunks.map((c) => c.doc))]
+      .map((nom) => ({
+        nom,
+        morceaux: snap.chunks.filter((c) => c.doc === nom).length,
+        citations: citations[nom] ?? 0,
+        jamais: (citations[nom] ?? 0) === 0 && questions >= 20,
+      }))
+      .sort((a, b) => a.citations - b.citations || a.nom.localeCompare(b.nom));
+  }
+
+  if (chemin === "/api/jeu") return snap.demo.map((d) => ({ question: d.question, doc: d.expected }));
+
+  if (chemin === "/api/seuil") {
+    seuil = Math.min(0.99, Math.max(0.5, Number(corps.seuil)));
+    return { seuil };
+  }
+
+  if (chemin === "/api/demander") {
+    const hits = chercher(snap, String(corps.question ?? "").trim());
+    /* A question with no pre-computed vector takes the screen's existing error path.
+     * Returning an empty passages array instead left the answer block reading the score
+     * of passages[0] on nothing, which threw inside the handler and stranded the button
+     * disabled — the failure mode where the page looks frozen rather than wrong. */
+    if (!hits) return { erreur: "hors_demo" };
+    questions++;
+    if (hits[0].score >= seuil) {
+      citations[hits[0].chunk.doc] = (citations[hits[0].chunk.doc] ?? 0) + 1;
+    }
+    return {
+      refus: hits[0].score < seuil,
+      seuil,
+      passages: hits.map((h) => ({
+        doc: h.chunk.doc,
+        titre: titreDe(h.chunk.heading),
+        texte: h.chunk.text,
+        score: h.score,
+        page: Number(h.chunk.heading.match(/page (\\d+)/)?.[1]) || null,
+      })),
+    };
+  }
+
+  return {};
+};
+</script>\n<script type="module">
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+/*
+ * One screen, two hosts.
+ *
+ * Run locally, this talks to the Node server. Published to GitHub Pages there is no
+ * server, so `window.LOCAL` answers the same routes from a pre-computed snapshot. The
+ * retrieval is the real one — same cosine, same weak-passage penalty, same bar, same
+ * refusal — but a question that was not embedded in advance cannot be answered without
+ * the 118 MB model, and the hosted page says so rather than pretending.
+ */
+const api = async (chemin, corps) => {
+  if (window.LOCAL) return window.LOCAL(chemin, corps);
+  const r = await fetch(chemin, corps ? { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(corps) } : {});
+  return r.json();
+};
+
+/**
+ * Les deux langues vivent dans un seul dictionnaire.
+ *
+ * Le corpus reste dans sa langue d'origine — traduire l'interface ne traduit pas les
+ * documents, et laisser croire le contraire serait pire que de ne rien traduire.
+ */
+/**
+ * Les mots de l'interface.
+ *
+ * Règle : aucun terme qu'il faut déjà connaître pour comprendre. Pas d'« index », pas
+ * de « passages », pas de « seuil ». La version précédente était écrite pour quelqu'un
+ * qui a déjà construit ce genre d'outil — c'est-à-dire pour personne parmi ceux à qui
+ * on le montre.
+ *
+ * Chaque étape dit ce qu'elle fait ET pourquoi elle existe. C'est le « pourquoi » qui
+ * manquait.
+ */
+const T = {
+  fr: {
+    h1: "Recherche documentaire",
+    provenance: "Chaque chiffre de cette page est <b>retrouvé</b> dans un texte public, <b>mesuré</b> en faisant tourner le code, <b>supposé</b> parce que personne ici ne peut le connaître, ou <b>choisi</b> par moi. Le README dit lequel, un par un.",
+    lede: "Pose une question sur tes documents. L'outil te montre le passage exact qui répond, avec le document et la page — et te dit franchement quand la réponse n'y est pas.",
+
+    e1: "Tes documents",
+    e1q: "Indique le dossier où ils se trouvent. L'outil sait lire les PDF, Word, RTF et texte.",
+    e1f: (n, p) => `${n} document(s) lus, découpés en ${p} morceaux`,
+    lire: "Lire ce dossier", exemple: "Essayer avec l'exemple fourni",
+    dossier: "/chemin/vers/ton/dossier",
+
+    e2: "Préparer la recherche",
+    e2q: "L'outil lit chaque document et apprend à le retrouver par le sens, pas seulement par les mots exacts. À faire une seule fois — c'est long la première fois, instantané ensuite.",
+    e2f: (n, d) => `Prêt — ${n} morceaux, préparés ${d}`,
+    construire: "Préparer", calcul: "Lecture en cours…",
+
+    e3: "Poser une question",
+    e3q: "Écris ta question comme tu la poserais à un collègue. Pas besoin des mots exacts du document.",
+    q: "Quel est le délai pour déclarer un soupçon ?", chercher: "Chercher",
+
+    e4: "Vérifier que ça marche",
+    e4q: "Écris quelques questions dont tu connais déjà la réponse, et dis dans quel document elle se trouve. L'outil se note dessus. Sans ça, impossible de savoir si un changement améliore ou dégrade quoi que ce soit.",
+    mesurer: "Se noter sur ces questions",
+    jeuPropre: (n) => `${n} question(s) de contrôle écrites pour ce dossier`,
+    jeuLivre: "Aucune question de contrôle — l'outil utilisera celles de l'exemple",
+    ajouter: "Ajouter", qNouvelle: "Une question dont tu connais la réponse",
+    docAttendu: "Dans quel document ? (laisse vide si la réponse n'existe pas)",
+
+    seuil: "Exigence avant de répondre",
+    seuilBas: "répond souvent, quitte à se tromper",
+    seuilHaut: "ne répond que s'il est sûr",
+    seuilQ: "Réglé sur l'exemple fourni. Avec tes propres documents, à revoir avec les questions de contrôle.",
+
+    top1: "réponse juste du premier coup", top5: "réponse juste dans les 3 premiers",
+    refus: "a bien refusé quand il ne savait pas", echecs: "questions ratées",
+    pasApplicable: "Les questions de contrôle disponibles portent sur l'exemple fourni, pas sur tes documents. Écris les tiennes ci-dessus — se noter sur les mauvaises questions ne veut rien dire.",
+
+    couv: "Quels documents servent vraiment",
+    couvq: "À chaque question, l'outil note d'où vient la réponse. Un document qui ne ressort jamais mérite un coup d'œil : mal découpé, vocabulaire différent, ou simplement hors sujet.",
+    citations: (n) => `${n} réponse(s) trouvée(s) dedans`, jamaisCite: "n'a jamais servi",
+    nonLus: (n) => `${n} fichier(s) n'ont pas pu être lus — leurs informations ne sortiront jamais dans une réponse`,
+    pasAssez: (n) => `${n} question(s) posée(s). Il en faut une vingtaine avant que « n'a jamais servi » veuille dire quelque chose.`,
+
+    erreurs: {
+      dossier_introuvable: "Ce dossier n'existe pas. Vérifie le chemin.",
+      dossier_vide: "Aucun document lisible dans ce dossier — rien n'a été changé.",
+      aucun_document: "Commence par lire un dossier à l'étape 1.",
+      pas_indexe: "Prépare d'abord la recherche à l'étape 2.",
+      puces: "Ou choisis une question de contrôle :",
+      hors_demo: "Cette démonstration embarque les vecteurs de 25 questions, pas le modèle qui en calcule de nouveaux. Choisis une des questions de contrôle ci-dessous, ou clone le dépôt pour poser les tiennes.",
+      aucun_dossier: "Aucun dossier chargé.",
+      question_vide: "Écris une question.",
+      inattendue: "Quelque chose s'est mal passé. Le détail est dans la console du serveur.",
+    },
+    resultat: "Résultat de la recherche", releve: "Relevé de contrôle",
+    plusProcheDoc: "Passage le plus proche", proximiteMesuree: "Proximité mesurée",
+    barreReglee: "Barre d'exigence réglée",
+    ecartRefus: "Écart — réponse refusée", ecartReponse: "Marge — réponse produite",
+    colDoc: "document", colPassages: "passages", colCitations: "réponses trouvées dedans",
+    colReponses: "Total des réponses attribuées",
+    signature: (d, m, s2) => `dossier ${d} · ${m} passages · barre ${s2.toFixed(2)} · modèle multilingual-e5-small · traitement local`,
+    aucunPassage: "Aucun document ne répond à cette question.",
+    proximite: (s, t) => `Le passage le plus ressemblant est à ${s}, en dessous de l'exigence fixée à ${t}.`,
+    plusProche: "Voici quand même le plus proche, à toi de juger :",
+    page: "page", questions: "questions posées",
+    tresProche: "très proche", proche: "proche", eloigne: "éloigné",
+  },
+  en: {
+    h1: "Document search",
+    provenance: "Every figure on this page is <b>retrieved</b> from a public source, <b>measured</b> by running the code, <b>assumed</b> because nobody here can know it, or <b>chosen</b> by me. The README says which, one by one.",
+    lede: "Ask a question about your documents. The tool shows the exact passage that answers it, with document and page — and tells you plainly when the answer isn't there.",
+
+    e1: "Your documents",
+    e1q: "Point to the folder they're in. The tool reads PDF, Word, RTF and text.",
+    e1f: (n, p) => `${n} document(s) read, split into ${p} chunks`,
+    lire: "Read this folder", exemple: "Try the bundled example",
+    dossier: "/path/to/your/folder",
+
+    e2: "Prepare the search",
+    e2q: "The tool reads each document and learns to find it by meaning, not just exact words. Done once — slow the first time, instant afterwards.",
+    e2f: (n, d) => `Ready — ${n} chunks, prepared ${d}`,
+    construire: "Prepare", calcul: "Reading…",
+
+    e3: "Ask a question",
+    e3q: "Write it the way you'd ask a colleague. You don't need the document's exact wording.",
+    q: "How long do I have to file a suspicious activity report?", chercher: "Search",
+
+    e4: "Check that it works",
+    e4q: "Write a few questions you already know the answer to, and say which document holds it. The tool scores itself against them. Without this, there's no way to tell whether a change improved or degraded anything.",
+    mesurer: "Score itself on these",
+    jeuPropre: (n) => `${n} check question(s) written for this folder`,
+    jeuLivre: "No check questions — the tool will use the example's",
+    ajouter: "Add", qNouvelle: "A question you know the answer to",
+    docAttendu: "Which document? (leave empty if there is no answer)",
+
+    seuil: "How sure before answering",
+    seuilBas: "answers often, even when wrong",
+    seuilHaut: "answers only when confident",
+    seuilQ: "Set on the bundled example. With your own documents, revisit it using your check questions.",
+
+    top1: "right answer first time", top5: "right answer in the top 3",
+    refus: "correctly refused when it didn't know", echecs: "failed questions",
+    pasApplicable: "The available check questions are about the bundled example, not your documents. Write your own above — scoring on the wrong questions means nothing.",
+
+    couv: "Which documents actually help",
+    couvq: "For every question, the tool records where the answer came from. A document that never comes up is worth a look: badly split, different vocabulary, or simply off topic.",
+    citations: (n) => `${n} answer(s) found in it`, jamaisCite: "never used",
+    nonLus: (n) => `${n} file(s) couldn't be read — their content will never appear in an answer`,
+    pasAssez: (n) => `${n} question(s) asked. About twenty are needed before "never used" means anything.`,
+
+    erreurs: {
+      dossier_introuvable: "That folder doesn't exist. Check the path.",
+      dossier_vide: "No readable document in that folder — nothing was changed.",
+      aucun_document: "Start by reading a folder in step 1.",
+      pas_indexe: "Prepare the search in step 2 first.",
+      puces: "Or pick a control question:",
+      hors_demo: "This demo carries pre-computed vectors for 25 questions, not the model that computes new ones. Pick one of the control questions below, or clone the repository to ask your own.",
+      aucun_dossier: "No folder loaded.",
+      question_vide: "Write a question.",
+      inattendue: "Something went wrong. The detail is in the server console.",
+    },
+    resultat: "Search result", releve: "Check statement",
+    plusProcheDoc: "Closest passage", proximiteMesuree: "Closeness measured",
+    barreReglee: "Confidence bar set",
+    ecartRefus: "Gap — answer refused", ecartReponse: "Margin — answer produced",
+    colDoc: "document", colPassages: "passages", colCitations: "answers found in it",
+    colReponses: "Total answers attributed",
+    signature: (d, m, s2) => `folder ${d} · ${m} passages · bar ${s2.toFixed(2)} · model multilingual-e5-small · local processing`,
+    aucunPassage: "No document answers this question.",
+    proximite: (s, t) => `The closest passage scores ${s}, below the ${t} bar you set.`,
+    plusProche: "Here's the closest anyway — judge for yourself:",
+    page: "page", questions: "questions asked",
+    tresProche: "very close", proche: "close", eloigne: "distant",
+  },
+};
+
+let langue = localStorage.getItem("langue") ?? "fr";
+let etat = { documents: [], ignores: [], morceaux: 0, indexe: false, pret: false, citations: {}, questions: 0 };
+let couverture = [];
+let mesure = null;
+let jeu = [];
+let reponse = null;
+/** { etape, code } — une erreur s'affiche sous l'étape qui l'a produite, pas ailleurs. */
+let erreur = null;
+let occupe = false;
+
+const t = () => T[langue];
+
+function dessiner() {
+  const L = t();
+  document.documentElement.lang = langue;
+  $("#h1").textContent = L.h1;
+  $("#provenanceLegende").innerHTML = L.provenance;
+  $("#lede").textContent = L.lede;
+  $("#fr").className = langue === "fr" ? "on" : "";
+  $("#en").className = langue === "en" ? "on" : "";
+
+  const lu = etat.documents.length > 0;
+  const indexe = etat.indexe && etat.pret;
+  const courante = !lu ? 1 : !indexe ? 2 : 3;
+
+  const etapes = [
+    { t: L.e1, q: lu ? L.e1f(etat.documents.length, etat.morceaux) : L.e1q,
+      act: `<div class="rang">
+        <input id="dossier" style="flex:1;min-width:240px" aria-label="${esc(L.e1)}" placeholder="${esc(L.dossier)}" value="${esc(etat.dossier ?? "")}" />
+        <button class="b ${courante === 1 ? "suite" : ""}" id="lire" ${occupe ? "disabled" : ""}>${esc(L.lire)}</button>
+      </div>
+      ${lu ? "" : `<div style="margin-top:9px"><button class="b" id="exemple" ${occupe ? "disabled" : ""}>${esc(L.exemple)}</button></div>`}`,
+      apres: blocErreur(1) + (lu ? blocCouverture() : "") },
+
+    { t: L.e2, q: indexe ? L.e2f(etat.morceaux, new Date(etat.construitLe).toLocaleString(langue === "fr" ? "fr-FR" : "en-GB")) : L.e2q,
+      act: `<button class="b ${courante === 2 ? "suite" : ""}" id="indexer" ${!lu || occupe ? "disabled" : ""}>${occupe ? esc(L.calcul) : esc(L.construire)}</button>`,
+      apres: blocErreur(2) },
+
+    { t: L.e3, q: L.e3q,
+      act: `<div class="rang">
+        <input id="question" style="flex:1;min-width:250px" ${!indexe ? "disabled" : ""} aria-label="${esc(L.e3)}" placeholder="${esc(L.q)}" />
+        <button class="b ${courante === 3 ? "suite" : ""}" id="demander" ${!indexe || occupe ? "disabled" : ""}>${esc(L.chercher)}</button>
+      </div>` + (indexe && jeu.length ? `<div class="puces">
+        <div class="quoi" style="margin-bottom:6px">${esc(L.puces)}</div>
+        ${jeu.map((q) => `<button type="button" class="puce" data-q="${esc(q.question)}">${esc(q.question)}</button>`).join("")}
+      </div>` : ""),
+      apres: blocErreur(3) + (reponse ? blocReponse() : "") },
+
+    { t: L.e4, q: L.e4q,
+      act: `<div class="rang">
+        <button class="b" id="mesurer" ${!indexe || occupe ? "disabled" : ""}>${esc(L.mesurer)}</button>
+        <span class="quoi">${jeu.length ? esc(L.jeuPropre(jeu.length)) : esc(L.jeuLivre)}</span>
+      </div>
+      <div style="margin-top:16px">
+        <div class="titre" style="font-size:13.5px">${esc(L.seuil)}</div>
+        <div class="rang" style="margin-top:7px">
+          <span class="quoi" style="flex:0 0 auto;font-size:12px">${esc(L.seuilBas)}</span>
+          <input id="seuil" type="range" min="0.5" max="0.99" step="0.01" value="${etat.seuil ?? 0.84}"
+            aria-label="${esc(L.seuil)}"
+            style="flex:1;min-width:110px" ${!indexe ? "disabled" : ""} />
+          <span class="quoi" style="flex:0 0 auto;font-size:12px">${esc(L.seuilHaut)}</span>
+        </div>
+        <div class="quoi" style="margin-top:5px">${esc(L.seuilQ)}</div>
+      </div>
+      <div class="rang" style="margin-top:12px">
+        <input id="qNew" placeholder="${esc(L.qNouvelle)}" style="flex:2;min-width:170px" />
+        <input id="dNew" placeholder="${esc(L.docAttendu)}" style="flex:1;min-width:150px" />
+        <button class="b" id="addQ" ${!indexe ? "disabled" : ""}>${esc(L.ajouter)}</button>
+      </div>`,
+      apres: mesure ? blocMesure() : "" },
+  ];
+
+  $("#etapes").innerHTML = etapes.map((e, i) => {
+    const n = i + 1;
+    return `<section class="feuillet">
+      <div class="intitule">${n} · ${esc(e.t)}</div>
+      <div class="corps">
+        <p class="quoi">${esc(e.q)}</p>
+        <div class="rang">${e.act}</div>
+        ${e.apres ?? ""}
+      </div>
+    </section>`;
+  }).join("") + `<div class="signature">${esc(L.signature(etat.dossier ?? "—", etat.morceaux, etat.seuil ?? 0.84))}</div>`;
+
+  brancher();
+}
+
+function blocCouverture() {
+  const L = t();
+  const lignes = (couverture.length
+    ? couverture
+    : etat.documents.map((d) => ({ nom: d.nom, morceaux: d.morceaux, citations: 0, jamais: true })));
+
+  const corps = lignes.map((c) => `<tr class="${c.jamais && etat.questions > 0 ? "attention" : ""}">
+      <td>${esc(c.nom)}</td>
+      <td>${c.morceaux}</td>
+      <td>${c.jamais && etat.questions > 0 ? esc(L.jamaisCite) : c.citations}</td>
+    </tr>`).join("");
+
+  const total = lignes.reduce((n, c) => n + (c.citations ?? 0), 0);
+
+  return `<section class="feuillet" style="margin-top:22px">
+    <div class="intitule">${esc(L.couv)}</div>
+    <div class="corps">
+      <p class="quoi">${esc(L.couvq)}</p>
+      <div class="defile"><table>
+        <thead><tr><th>${esc(L.colDoc)}</th><th>${esc(L.colPassages)}</th><th>${esc(L.colCitations)}</th></tr></thead>
+        <tbody>${corps}</tbody>
+      </table></div>
+      <div class="ligne total ${etat.questions >= 20 ? "" : "attente"}">
+        <span class="intitule">${esc(L.colReponses)}</span>
+        <span class="valeur">${total} <small>/ ${etat.questions} ${esc(L.questions)}</small></span>
+      </div>
+      ${etat.questions > 0 && etat.questions < 20
+        ? `<div class="renvoi">${esc(L.pasAssez(etat.questions))}</div>` : ""}
+      ${etat.ignores?.length ? `<div class="renvoi defavorable">
+        <b>${esc(L.nonLus(etat.ignores.length))}</b><br>
+        ${etat.ignores.map((i) => `${esc(i.nom)} — ${esc(i.raison)}`).join("<br>")}
+      </div>` : ""}
+    </div>
+  </section>`;
+}
+
+/** Le message d'erreur, traduit depuis le code renvoyé par le moteur. */
+function blocErreur(etape) {
+  const L = t();
+  if (!erreur || erreur.etape !== etape) return "";
+  return `<div class="renvoi defavorable" role="alert">${esc(L.erreurs[erreur.code] ?? L.erreurs.inattendue)}</div>`;
+}
+
+function blocReponse() {
+  const L = t();
+  const premier = reponse.passages[0];
+  const ecart = premier.score - reponse.seuil;
+
+  /*
+   * Le refus est posé comme un solde, pas comme une affirmation.
+   *
+   * Les deux nombres dont il découle sont au-dessus de lui, et l'écart est leur
+   * différence. C'est ce que cette forme interdit : conclure sans montrer le calcul.
+   */
+  const passage = (p) => `<div class="renvoi">
+      <span class="reference">${esc(p.doc)}${p.page ? ` · ${esc(L.page)} ${p.page}` : ""}${p.titre ? ` › ${esc(p.titre)}` : ""}</span>
+      <div style="margin-top:6px;white-space:pre-wrap">${esc(p.texte.slice(0, 700))}</div>
+    </div>`;
+
+  const compte = `
+    <div class="ligne"><span class="intitule">${esc(L.plusProcheDoc)}</span>
+      <span class="valeur">${esc(premier.doc)}${premier.titre ? ` <small>§${esc(premier.titre)}</small>` : ""}</span></div>
+    <div class="ligne"><span class="intitule">${esc(L.proximiteMesuree)}</span>
+      <span class="valeur">${premier.score.toFixed(3)}</span></div>
+    <div class="ligne"><span class="intitule">${esc(L.barreReglee)}</span>
+      <span class="valeur">${reponse.seuil.toFixed(3)}</span></div>
+    <div class="ligne total ${reponse.refus ? "defavorable" : "favorable"}">
+      <span class="intitule">${esc(reponse.refus ? L.ecartRefus : L.ecartReponse)}</span>
+      <span class="valeur">${ecart >= 0 ? "+" : "\u2212"}${Math.abs(ecart).toFixed(3)}</span></div>`;
+
+  return `<section class="feuillet" style="margin-top:20px">
+    <div class="intitule">${esc(L.resultat)}</div>
+    <div class="corps">
+      ${compte}
+      ${reponse.refus
+        ? `<div class="renvoi defavorable">${esc(L.plusProche)}</div>${passage(premier)}`
+        : reponse.passages.map(passage).join("")}
+    </div>
+  </section>`;
+}
+
+function blocMesure() {
+  const L = t();
+  if (!mesure.applicable) return `<div class="renvoi attention">${esc(L.pasApplicable)}</div>`;
+  const pc = (n) => `${Math.round(n * 100)} %`;
+
+  return `<section class="feuillet" style="margin-top:20px">
+    <div class="intitule">${esc(L.releve)}</div>
+    <div class="corps">
+      <div class="ligne"><span class="intitule">${esc(L.top1)}</span><span class="valeur">${pc(mesure.top1)}</span></div>
+      <div class="ligne"><span class="intitule">${esc(L.top5)}</span><span class="valeur">${pc(mesure.top5)}</span></div>
+      <div class="ligne"><span class="intitule">${esc(L.refus)}</span><span class="valeur">${pc(mesure.abstention)}</span></div>
+      <div class="ligne total ${mesure.echecs.length ? "defavorable" : "favorable"}">
+        <span class="intitule">${esc(L.echecs)}</span>
+        <span class="valeur">${mesure.echecs.length}</span></div>
+      ${mesure.echecs.length ? `<div class="renvoi">${mesure.echecs.map((e) =>
+        `${esc(e.question)}<br><span class="reference">${esc(e.attendu)} \u2192 ${esc(e.obtenu)}</span>`).join("<br><br>")}</div>` : ""}
+    </div>
+  </section>`;
+}
+
+async function rafraichirCouverture() {
+  couverture = await api("/api/couverture");
+}
+
+function brancher() {
+  const exemple = $("#exemple");
+  if (exemple) exemple.onclick = () => {
+    $("#dossier").value = "~/Documents/rag/corpus";
+    $("#lire").click();
+  };
+
+  const lire = $("#lire");
+  if (lire) lire.onclick = async () => {
+    const dossier = $("#dossier").value.trim();
+    if (!dossier) return;
+    occupe = true; reponse = null; mesure = null; erreur = null; dessiner();
+    const r = await api("/api/lire", { dossier });
+    occupe = false;
+    if (r.erreur) { erreur = { etape: 1, code: r.erreur }; dessiner(); return; }
+    etat = { ...etat, ...r, pret: false };
+    jeu = await api("/api/jeu");
+    await rafraichirCouverture();
+    dessiner();
+  };
+
+  const indexer = $("#indexer");
+  if (indexer) indexer.onclick = async () => {
+    occupe = true; erreur = null; dessiner();
+    const r = await api("/api/indexer", {});
+    occupe = false;
+    if (r.erreur) { erreur = { etape: 2, code: r.erreur }; dessiner(); return; }
+    etat = { ...etat, ...r, pret: true };
+    dessiner();
+  };
+
+  const champ = $("#question");
+  const chercher = async () => {
+    const question = champ.value.trim();
+    if (!question) return;
+    occupe = true; erreur = null; dessiner();
+    const rep = await api("/api/demander", { question });
+    if (rep.erreur) { erreur = { etape: 3, code: rep.erreur }; occupe = false; dessiner(); return; }
+    reponse = rep;
+    etat = await api("/api/etat");
+    await rafraichirCouverture();
+    occupe = false;
+    dessiner();
+    $("#question").value = question;
+  };
+  for (const puce of document.querySelectorAll(".puce")) {
+    puce.onclick = () => { champ.value = puce.dataset.q; chercher(); };
+  }
+
+  const demander = $("#demander");
+  if (demander) demander.onclick = chercher;
+  if (champ) champ.onkeydown = (e) => { if (e.key === "Enter") chercher(); };
+
+  const seuil = $("#seuil");
+  if (seuil) seuil.oninput = async () => {
+    $("#seuilVal").textContent = Number(seuil.value).toFixed(2);
+    clearTimeout(seuil._t);
+    seuil._t = setTimeout(async () => {
+      await api("/api/seuil", { seuil: Number(seuil.value) });
+      etat = await api("/api/etat");
+    }, 350);
+  };
+
+  const addQ = $("#addQ");
+  if (addQ) addQ.onclick = async () => {
+    const question = $("#qNew").value.trim();
+    if (!question) return;
+    const doc = $("#dNew").value.trim() || null;
+    jeu = await api("/api/jeu", { questions: [...jeu, { question, doc }] });
+    mesure = null;
+    dessiner();
+  };
+
+  const bMesure = $("#mesurer");
+  if (bMesure) bMesure.onclick = async () => {
+    occupe = true; dessiner();
+    mesure = await api("/api/mesurer", {});
+    occupe = false;
+    dessiner();
+  };
+}
+
+for (const l of ["fr", "en"]) {
+  $("#" + l).onclick = () => { langue = l; localStorage.setItem("langue", l); dessiner(); };
+}
+
+etat = await api("/api/etat");
+jeu = await api("/api/jeu");
+await rafraichirCouverture();
+dessiner();
+</script>
+</body>
+</html>

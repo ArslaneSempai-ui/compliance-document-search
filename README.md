@@ -58,16 +58,27 @@ answer in the corpus.
 
 | Engine | Correct passage ranked 1st | In the top 5 |
 |---|---|---|
-| Keywords (BM25) | 31 % | 75 % |
-| **Embeddings** | **75 %** | **88 %** |
-| Fusion of both | 50 % | 56 % |
+| Keywords (BM25) | 31 % [15–52] | 75 % [53–89] |
+| **Embeddings** | **75 % [53–89]** | **88 % [70–97]** |
+| Fusion of both | 50 % [30–70] | 56 % [34–74] |
 
-At the chosen confidence bar (0.84): **75 % of unanswerable questions are correctly
-refused, at the cost of one good answer in sixteen.**
+*95 % intervals, n = 20. Embeddings beat keywords on first position — [53–89] against
+[15–52], no overlap, so that one holds. Everything else on this table overlaps with
+everything else: twenty questions cannot rank fusion against either of them, and saying
+otherwise would be reading noise.*
 
-The tool exposes that setting in the interface, labelled by its effects — "answers often,
-even when wrong" at one end, "answers only when confident" at the other. The trade-off
-belongs to the business, not to whoever built the thing.
+At the chosen confidence bar (0.84), three of the four unanswerable questions are
+correctly refused, at the cost of one good answer in sixteen.
+
+**Four questions is not a measurement.** An earlier version of this page reported that as
+"75 % correctly refused"; the 95 % interval on three out of four runs from 30 % to 95 %.
+The figure has been withdrawn rather than dressed up, and every rate here now carries its
+interval and its sample size. The retrieval figures rest on twenty questions — roughly
+±18 points each.
+
+The tool exposes the confidence bar in the interface, labelled by its effects — "answers
+often, even when wrong" at one end, "answers only when confident" at the other. The
+trade-off belongs to the business, not to whoever built the thing.
 
 Also tested on **five real PDFs, 312 pages** of bank risk reports and course material:
 618 passages indexed in 13 seconds, zero unreadable files.

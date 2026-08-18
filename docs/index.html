@@ -72,6 +72,9 @@ window.LOCAL = async (chemin, corps) => {
         nom, morceaux: snap.chunks.filter((c) => c.doc === nom).length,
       })),
       citations, morceaux: snap.chunks.length, ignores: [],
+      /* L'écran affiche « construit le … » et le chemin du dossier dans sa signature.
+       * Omis, new Date(undefined) donnait « Invalid Date » sur la page publiée. */
+      construitLe: snap.construitLe, dossier: snap.dossier,
       demo: snap.demo,
     };
   }
@@ -121,6 +124,7 @@ window.LOCAL = async (chemin, corps) => {
   return {};
 };
 </script>\n<script type="module">
+import { barres, empile } from "./graphes.js";
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 /*
@@ -159,7 +163,7 @@ const T = {
   fr: {
     h1: "Recherche documentaire",
     provenance: "Chaque chiffre de cette page est <b>retrouvé</b> dans un texte public, <b>mesuré</b> en faisant tourner le code, <b>supposé</b> parce que personne ici ne peut le connaître, ou <b>choisi</b> par moi. Le README dit lequel, un par un.",
-    lede: "Pose une question sur tes documents. L'outil te montre le passage exact qui répond, avec le document et la page — et te dit franchement quand la réponse n'y est pas.",
+    lede: "Pose une question sur tes documents. L'outil montre le passage exact, et dit quand la réponse n'y est pas.",
 
     e1: "Tes documents",
     e1q: "Indique le dossier où ils se trouvent. L'outil sait lire les PDF, Word, RTF et texte.",
@@ -168,7 +172,7 @@ const T = {
     dossier: "/chemin/vers/ton/dossier",
 
     e2: "Préparer la recherche",
-    e2q: "L'outil lit chaque document et apprend à le retrouver par le sens, pas seulement par les mots exacts. À faire une seule fois — c'est long la première fois, instantané ensuite.",
+    e2q: "L'outil lit chaque document et apprend à le retrouver par le sens, pas par les mots.",
     e2f: (n, d) => `Prêt — ${n} morceaux, préparés ${d}`,
     construire: "Préparer", calcul: "Lecture en cours…",
 
@@ -177,7 +181,7 @@ const T = {
     q: "Quel est le délai pour déclarer un soupçon ?", chercher: "Chercher",
 
     e4: "Vérifier que ça marche",
-    e4q: "Écris quelques questions dont tu connais déjà la réponse, et dis dans quel document elle se trouve. L'outil se note dessus. Sans ça, impossible de savoir si un changement améliore ou dégrade quoi que ce soit.",
+    e4q: "Écris quelques questions dont tu connais la réponse : sans elles, rien ne dit si un changement améliore ou dégrade.",
     mesurer: "Se noter sur ces questions",
     jeuPropre: (n) => `${n} question(s) de contrôle écrites pour ce dossier`,
     jeuLivre: "Aucune question de contrôle — l'outil utilisera celles de l'exemple",
@@ -191,10 +195,21 @@ const T = {
 
     top1: "réponse juste du premier coup", top5: "réponse juste dans les 3 premiers",
     refus: "a bien refusé quand il ne savait pas", echecs: "questions ratées",
-    pasApplicable: "Les questions de contrôle disponibles portent sur l'exemple fourni, pas sur tes documents. Écris les tiennes ci-dessus — se noter sur les mauvaises questions ne veut rien dire.",
+    pasApplicable: "Les questions de contrôle portent sur l'exemple fourni, pas sur ce dossier.",
 
     couv: "Quels documents servent vraiment",
-    couvq: "À chaque question, l'outil note d'où vient la réponse. Un document qui ne ressort jamais mérite un coup d'œil : mal découpé, vocabulaire différent, ou simplement hors sujet.",
+    couvq: "Un document qui ne ressort jamais mérite un coup d'œil.",
+    figIssuesTitre: "Les 25 questions, une barre",
+    figIssuesAria: "Une barre partagée en quatre : réponses justes, réponses fausses, silences justifiés quand aucune réponse n'existait, et réponses inventées.",
+    figEchecsTitre: "Pourquoi ça rate",
+    figEchecsAria: "Barres du nombre d'échecs par motif.",
+    figCouvTitre: "Ce que l'index sert vraiment",
+    figCouvAria: "Barres du nombre de citations par document ; un document jamais cité est du poids mort dans l'index.",
+    segJustes: "juste", segRates: "raté", segSilence: "silence justifié", segInvente: "inventé",
+    motifSilence: "s'est tu alors qu'une réponse existait",
+    motifPassage: "bon document, mauvais passage",
+    motifDocument: "mauvais document en tête",
+    motCitations: "citations",
     citations: (n) => `${n} réponse(s) trouvée(s) dedans`, jamaisCite: "n'a jamais servi",
     nonLus: (n) => `${n} fichier(s) n'ont pas pu être lus — leurs informations ne sortiront jamais dans une réponse`,
     pasAssez: (n) => `${n} question(s) posée(s). Il en faut une vingtaine avant que « n'a jamais servi » veuille dire quelque chose.`,
@@ -211,6 +226,7 @@ const T = {
       inattendue: "Quelque chose s'est mal passé. Le détail est dans la console du serveur.",
     },
     resultat: "Résultat de la recherche", releve: "Relevé de contrôle",
+    voirCalcul: "Voir le calcul",
     plusProcheDoc: "Passage le plus proche", proximiteMesuree: "Proximité mesurée",
     barreReglee: "Barre d'exigence réglée",
     ecartRefus: "Écart — réponse refusée", ecartReponse: "Marge — réponse produite",
@@ -226,7 +242,7 @@ const T = {
   en: {
     h1: "Document search",
     provenance: "Every figure on this page is <b>retrieved</b> from a public source, <b>measured</b> by running the code, <b>assumed</b> because nobody here can know it, or <b>chosen</b> by me. The README says which, one by one.",
-    lede: "Ask a question about your documents. The tool shows the exact passage that answers it, with document and page — and tells you plainly when the answer isn't there.",
+    lede: "Ask a question about your documents. The tool shows the exact passage — and says when the answer isn't there.",
 
     e1: "Your documents",
     e1q: "Point to the folder they're in. The tool reads PDF, Word, RTF and text.",
@@ -235,7 +251,7 @@ const T = {
     dossier: "/path/to/your/folder",
 
     e2: "Prepare the search",
-    e2q: "The tool reads each document and learns to find it by meaning, not just exact words. Done once — slow the first time, instant afterwards.",
+    e2q: "The tool reads each document and learns to find it by meaning, not by words.",
     e2f: (n, d) => `Ready — ${n} chunks, prepared ${d}`,
     construire: "Prepare", calcul: "Reading…",
 
@@ -244,7 +260,7 @@ const T = {
     q: "How long do I have to file a suspicious activity report?", chercher: "Search",
 
     e4: "Check that it works",
-    e4q: "Write a few questions you already know the answer to, and say which document holds it. The tool scores itself against them. Without this, there's no way to tell whether a change improved or degraded anything.",
+    e4q: "Write a few questions you already know the answer to: without them, nothing says whether a change improved or degraded anything.",
     mesurer: "Score itself on these",
     jeuPropre: (n) => `${n} check question(s) written for this folder`,
     jeuLivre: "No check questions — the tool will use the example's",
@@ -258,10 +274,21 @@ const T = {
 
     top1: "right answer first time", top5: "right answer in the top 3",
     refus: "correctly refused when it didn't know", echecs: "failed questions",
-    pasApplicable: "The available check questions are about the bundled example, not your documents. Write your own above — scoring on the wrong questions means nothing.",
+    pasApplicable: "The check questions are about the bundled example, not about this folder.",
 
     couv: "Which documents actually help",
-    couvq: "For every question, the tool records where the answer came from. A document that never comes up is worth a look: badly split, different vocabulary, or simply off topic.",
+    couvq: "A document that never comes up is worth a look.",
+    figIssuesTitre: "The 25 questions, one bar",
+    figIssuesAria: "One bar split four ways: right answers, wrong answers, justified silences where no answer existed, and invented answers.",
+    figEchecsTitre: "Why it fails",
+    figEchecsAria: "Bars of the number of failures by reason.",
+    figCouvTitre: "What the index actually serves",
+    figCouvAria: "Bars of the number of citations per document; a document never cited is dead weight in the index.",
+    segJustes: "right", segRates: "wrong", segSilence: "justified silence", segInvente: "invented",
+    motifSilence: "stayed silent when an answer existed",
+    motifPassage: "right document, wrong passage",
+    motifDocument: "wrong document in first place",
+    motCitations: "citations",
     citations: (n) => `${n} answer(s) found in it`, jamaisCite: "never used",
     nonLus: (n) => `${n} file(s) couldn't be read — their content will never appear in an answer`,
     pasAssez: (n) => `${n} question(s) asked. About twenty are needed before "never used" means anything.`,
@@ -278,6 +305,7 @@ const T = {
       inattendue: "Something went wrong. The detail is in the server console.",
     },
     resultat: "Search result", releve: "Check statement",
+    voirCalcul: "Show the arithmetic",
     plusProcheDoc: "Closest passage", proximiteMesuree: "Closeness measured",
     barreReglee: "Confidence bar set",
     ecartRefus: "Gap — answer refused", ecartReponse: "Margin — answer produced",
@@ -393,10 +421,22 @@ function blocCouverture() {
 
   const total = lignes.reduce((n, c) => n + (c.citations ?? 0), 0);
 
+  /* Tant que personne n'a posé de question, toutes les barres valent zéro : une figure
+   * plate n'apprend rien et ressemble à une panne. Elle apparaît au premier comptage. */
+  const figCouv = total === 0 ? "" : `<div class="titre-fig">${esc(L.figCouvTitre)}</div>` + barres({
+    items: lignes.map((c) => ({
+      nom: c.nom, valeur: c.citations ?? 0,
+      ton: c.jamais ? "attention" : "accent", ici: c.jamais,
+      note: `${c.morceaux} ${L.colPassages.toLowerCase()}`,
+    })),
+    fmt: (v) => `${v} ${L.motCitations}`, aria: L.figCouvAria,
+  });
+
   return `<section class="feuillet" style="margin-top:22px">
     <div class="intitule">${esc(L.couv)}</div>
     <div class="corps">
       <p class="quoi">${esc(L.couvq)}</p>
+      ${figCouv}
       <div class="defile"><table>
         <thead><tr><th>${esc(L.colDoc)}</th><th>${esc(L.colPassages)}</th><th>${esc(L.colCitations)}</th></tr></thead>
         <tbody>${corps}</tbody>
@@ -438,6 +478,32 @@ function blocReponse() {
       <div style="margin-top:6px;white-space:pre-wrap">${esc(p.texte.slice(0, 700))}</div>
     </div>`;
 
+  /*
+   * The gap, drawn.
+   *
+   * "0.810" and "the bar is at 0.840" ask the reader to subtract and then remember which
+   * way the subtraction goes. A fill against a marked line answers before anything is
+   * read: the fill stops short of the mark, or it passes it. The three figures stay
+   * underneath for whoever wants to check the arithmetic.
+   *
+   * The scale starts at 0.5 rather than 0 because every score this engine produces lives
+   * in the top half — a bar from zero would show four identical full bars and hide the
+   * only thing that matters, which is the last few hundredths.
+   */
+  const BAS = 0.5;
+  const place = (x) => Math.max(0, Math.min(100, ((x - BAS) / (1 - BAS)) * 100));
+  const jauge = `<div class="jauge ${reponse.refus ? "sous" : "gagnant"}" style="margin-bottom:22px">
+    <div class="etiquette">
+      <b>${esc(L.proximiteMesuree)}</b>
+      <span class="valeur">${premier.score.toFixed(3)}</span>
+    </div>
+    <div class="piste">
+      <div class="remplissage" style="width:${place(premier.score).toFixed(1)}%"></div>
+      <div class="seuil" style="left:${place(reponse.seuil).toFixed(1)}%"></div>
+      <div class="marque" style="left:${place(reponse.seuil).toFixed(1)}%">${esc(L.barreReglee)} ${reponse.seuil.toFixed(2)}</div>
+    </div>
+  </div>`;
+
   const compte = `
     <div class="ligne"><span class="intitule">${esc(L.plusProcheDoc)}</span>
       <span class="valeur">${esc(premier.doc)}${premier.titre ? ` <small>§${esc(premier.titre)}</small>` : ""}</span></div>
@@ -452,7 +518,8 @@ function blocReponse() {
   return `<section class="feuillet" style="margin-top:20px">
     <div class="intitule">${esc(L.resultat)}</div>
     <div class="corps">
-      ${compte}
+      ${jauge}
+      <details><summary>${esc(L.voirCalcul)}</summary>${compte}</details>
       ${reponse.refus
         ? `<div class="renvoi defavorable">${esc(L.plusProche)}</div>${passage(premier)}`
         : reponse.passages.map(passage).join("")}
@@ -465,9 +532,48 @@ function blocMesure() {
   if (!mesure.applicable) return `<div class="renvoi attention">${esc(L.pasApplicable)}</div>`;
   const pc = (n) => `${Math.round(n * 100)} %`;
 
+  /*
+   * Les quatre issues possibles, et elles se somment au jeu entier.
+   *
+   * `abstention` est la part des questions *sans réponse dans le corpus* où le système
+   * s'est tu — pas un taux de silence global. Les confondre ferait dire à la figure
+   * l'inverse de ce que mesure le moteur.
+   */
+  const indispo = mesure.total - mesure.repondables;
+  const justes = Math.round(mesure.top1 * mesure.repondables);
+  const rates = mesure.repondables - justes;
+  const silences = Math.round(mesure.abstention * indispo);
+  const inventes = indispo - silences;
+
+  const figIssues = empile({
+    items: [{ nom: `${mesure.total} questions`, parts: [
+      { nom: L.segJustes, valeur: justes, ton: "accent" },
+      { nom: L.segRates, valeur: rates, ton: "alerte" },
+      { nom: L.segSilence, valeur: silences, ton: "neutre" },
+      { nom: L.segInvente, valeur: inventes, ton: "attention" },
+    ] }],
+    fmt: (v) => String(Math.round(v)),
+    aria: L.figIssuesAria,
+  });
+
+  const motifCourt = (m) => m.startsWith("stayed silent") ? L.motifSilence
+    : m.startsWith("right document") ? L.motifPassage
+    : m.startsWith("wrong document") ? L.motifDocument : m;
+  const parMotif = new Map();
+  for (const e of mesure.echecs) {
+    const k = motifCourt(e.motif);
+    parMotif.set(k, (parMotif.get(k) ?? 0) + 1);
+  }
+  const figEchecs = parMotif.size === 0 ? "" : `<div class="titre-fig">${esc(L.figEchecsTitre)}</div>` + barres({
+    items: [...parMotif].sort((x, y) => y[1] - x[1]).map(([nom, valeur]) => ({ nom, valeur, ton: "alerte" })),
+    fmt: (v) => String(v), aria: L.figEchecsAria,
+  });
+
   return `<section class="feuillet" style="margin-top:20px">
     <div class="intitule">${esc(L.releve)}</div>
     <div class="corps">
+      <div class="titre-fig">${esc(L.figIssuesTitre)}</div>${figIssues}
+      ${figEchecs}
       <div class="ligne"><span class="intitule">${esc(L.top1)}</span><span class="valeur">${pc(mesure.top1)}</span></div>
       <div class="ligne"><span class="intitule">${esc(L.top5)}</span><span class="valeur">${pc(mesure.top5)}</span></div>
       <div class="ligne"><span class="intitule">${esc(L.refus)}</span><span class="valeur">${pc(mesure.abstention)}</span></div>

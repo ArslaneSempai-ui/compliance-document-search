@@ -108,8 +108,10 @@ that claimed US requirements from memory would have been the wrong kind of confi
 citations vouch for themselves; everything invented around them is marked inline in the
 documents themselves.
 
-Also tested on **five real PDFs, 312 pages** of bank risk reports and course material: 618
-passages indexed in 13 seconds, zero unreadable files.
+Also tested on **five real PDFs, <!--p:ragReel.pages-->312<!--/p--> pages** of bank risk reports
+and course material: <!--p:ragReel.passages-->618<!--/p--> passages indexed in
+<!--p:ragReel.secondesIndexation-->14<!--/p--> seconds, zero unreadable files. Those documents
+stay on the machine, so that measurement is recorded rather than recomputed on every check.
 
 ---
 

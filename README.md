@@ -65,15 +65,16 @@ answer in the corpus at all, and four are asked in French of an English corpus.
 
 | Engine | Correct passage ranked 1st | In the top 5 |
 |---|---|---|
-| Keywords (BM25) | 31 % [15–52] | 75 % [53–89] |
-| **Embeddings** | **75 % [53–89]** | **88 % [70–97]** |
-| Fusion of both | 50 % [30–70] | 56 % [34–74] |
+| Keywords (BM25) | 37 % [19–59] | 53 % [32–73] |
+| **Embeddings** | **68 % [46–85]** | **79 % [57–91]** |
+| Fusion of both | 42 % [23–64] | 63 % [41–81] |
 
-*95 % intervals. Embeddings beat keywords on first position — [53–89] against [15–52], no
-overlap, so that one holds. Everything else on this table overlaps with everything else:
-twenty questions cannot rank fusion against either of them, and saying otherwise would be
-reading noise. This table records an experiment run once, on the original corpus; it is a
-historical record and is marked as one rather than regenerated.*
+*95 % intervals, n = 19 answerable questions.* **Nothing on this table is establishable.**
+Embeddings lead every row, and every interval overlaps every other — [46–85] against [19–59]
+on first position. On the original twenty-question corpus that pair was disjoint and the
+ordering held; re-measured on the set shipped today it does not, which is the same lesson the
+rest of this page makes: a comparison can stop holding because the questions changed, not
+because the engine did.
 
 ### The bar, and why it is the interesting number
 

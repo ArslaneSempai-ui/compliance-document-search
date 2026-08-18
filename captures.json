@@ -1,0 +1,38 @@
+{
+  "images": [
+    {
+      "sortie": "images/answer.png",
+      "type": "png",
+      "taille": [
+        1100,
+        3400
+      ],
+      "echelle": 2,
+      "depart": 1955,
+      "hauteurUtile": 700,
+      "scenes": [
+        [
+          "#question=How long do I have to file a suspicious activity report?",
+          "#demander!"
+        ]
+      ]
+    },
+    {
+      "sortie": "images/refusal.png",
+      "type": "png",
+      "taille": [
+        1100,
+        3400
+      ],
+      "echelle": 2,
+      "depart": 1690,
+      "hauteurUtile": 420,
+      "scenes": [
+        [
+          "#question=What is the recipe for apple pie?",
+          "#demander!"
+        ]
+      ]
+    }
+  ]
+}

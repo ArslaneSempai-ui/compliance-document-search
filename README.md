@@ -54,6 +54,12 @@ states the bar, and shows that passage anyway so you can judge for yourself:
 Note what's happening in the second screenshot: the passage it found is *about* the
 question — it's the confidentiality rule that answers it. The system still refused,
 because 0.825 sat under the 0.84 bar. **That's a false refusal, and it's visible.**
+
+**Setting the bar** — and there is no clean place to put it. Drag it across the two
+populations and read what each position costs: at 0.79 the system answers five questions
+the corpus cannot answer; at 0.90 it stays silent on sixteen it could have answered.
+
+![Dragging the bar: silences on one side, invented answers on the other](images/barre.gif)
 Hiding it would make the demo look better and the tool worse.
 
 ---

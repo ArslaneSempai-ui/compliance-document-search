@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Recherche documentaire</title>
+<title>Document search — and the six questions it refuses</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23fbfaf7'/%3E%3Crect x='2' y='4' width='12' height='1' fill='%23111'/%3E%3Crect x='2' y='7' width='12' height='1' fill='%23111'/%3E%3Crect x='2' y='11' width='12' height='2' fill='%23111'/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="registre.css" />
 </head>
@@ -13,9 +13,6 @@
     <div>
       <h1 id="h1"></h1>
       <p class="lede" id="lede"></p>
-    </div>
-    <div class="lang">
-      <button id="fr">FR</button><button id="en">EN</button>
     </div>
   </div>
 <p class="renvoi" style="margin-bottom:1.5rem">
@@ -192,7 +189,7 @@ window.LOCAL = async (chemin, corps) => {
   return {};
 };
 </script>\n<script type="module">
-import { barres, empile, populations } from "./graphes.js";
+import { barres, empile, populations, saisir } from "./graphes.js";
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 /*
@@ -211,10 +208,12 @@ const api = async (chemin, corps) => {
 };
 
 /**
- * Les deux langues vivent dans un seul dictionnaire.
+ * Les intitulés de l'écran, en anglais — il n'y a plus de bascule de langue.
  *
- * Le corpus reste dans sa langue d'origine — traduire l'interface ne traduit pas les
- * documents, et laisser croire le contraire serait pire que de ne rien traduire.
+ * Le lecteur visé est un recruteur anglophone, et le README est en anglais : deux langues
+ * faisaient écrire chaque libellé deux fois pour une moitié que personne ne lit. Le corpus,
+ * lui, reste dans sa langue d'origine — traduire l'interface ne traduit pas les documents,
+ * et laisser croire le contraire serait pire que de ne rien traduire.
  */
 /**
  * Les mots de l'interface.
@@ -228,102 +227,6 @@ const api = async (chemin, corps) => {
  * manquait.
  */
 const T = {
-  fr: {
-    h1: "Recherche documentaire",
-    provenance: "Chaque chiffre de cette page est <b>retrouvé</b> dans un texte public, <b>mesuré</b> en faisant tourner le code, <b>supposé</b> parce que personne ici ne peut le connaître, ou <b>choisi</b> par moi. Le README dit lequel, un par un.",
-    lede: "Pose une question sur tes documents. L'outil montre le passage exact, et dit quand la réponse n'y est pas.",
-
-    e1: "Tes documents",
-    e1q: "Indique le dossier où ils se trouvent. L'outil sait lire les PDF, Word, RTF et texte.",
-    e1f: (n, p) => `${n} document(s) lus, découpés en ${p} morceaux`,
-    lire: "Lire ce dossier", exemple: "Essayer avec l'exemple fourni",
-    dossier: "/chemin/vers/ton/dossier",
-
-    e2: "Préparer la recherche",
-    e2q: "L'outil lit chaque document et apprend à le retrouver par le sens, pas par les mots.",
-    e2f: (n, d) => `Prêt — ${n} morceaux, préparés ${d}`,
-    construire: "Préparer", calcul: "Lecture en cours…",
-
-    e3: "Poser une question",
-    e3q: "Écris ta question comme tu la poserais à un collègue. Pas besoin des mots exacts du document.",
-    q: "Quel est le délai pour déclarer un soupçon ?", chercher: "Chercher",
-
-    e4: "Vérifier que ça marche",
-    e4q: "Écris quelques questions dont tu connais la réponse : sans elles, rien ne dit si un changement améliore ou dégrade.",
-    mesurer: "Se noter sur ces questions",
-    jeuPropre: (n) => `${n} question(s) de contrôle écrites pour ce dossier`,
-    jeuLivre: "Aucune question de contrôle — l'outil utilisera celles de l'exemple",
-    ajouter: "Ajouter", qNouvelle: "Une question dont tu connais la réponse",
-    docAttendu: "Dans quel document ? (laisse vide si la réponse n'existe pas)",
-
-    seuil: "Exigence avant de répondre",
-    seuilBas: "répond souvent, quitte à se tromper",
-    seuilHaut: "ne répond que s'il est sûr",
-    seuilQ: "Réglé sur l'exemple fourni. Avec tes propres documents, à revoir avec les questions de contrôle.",
-    figPopTitre: (n) => `${n} questions de contrôle, le score du meilleur passage trouvé`,
-    figPopAria: "Deux populations sur l'axe des scores : les questions dont la réponse existe dans "
-      + "le corpus, au-dessus de l'axe, et celles dont elle n'existe pas, en dessous. Les deux se "
-      + "recouvrent, et la barre est posée dans le recouvrement.",
-    figPopHaut: (n) => `la réponse existe · ${n} questions`,
-    figPopBas: (n) => `aucune réponse dans le corpus · ${n} questions`,
-    figPopBarre: (v) => `la barre · ${v}`,
-    figPopAvant: "on se tait",
-    figPopApres: "on répond",
-    figPopRecouvrement: "recouvrement",
-    figPopSuite: (silences, inventions, n) =>
-      `À cette hauteur, <b>${silences} silence(s) sur des questions dont la réponse existait</b>`
-      + ` et <b>${inventions} réponse(s) inventée(s)</b>. Monter la barre échange les secondes contre`
-      + ` les premières ; la descendre fait l'inverse. Sur ${n} questions — un plancher trop bas pour`
-      + ` trancher finement, et la figure le dit plutôt que de lisser deux courbes.`,
-
-    top1: "réponse juste du premier coup", top5: "réponse juste dans les 3 premiers",
-    refus: "a bien refusé quand il ne savait pas", echecs: "questions ratées",
-    pasApplicable: "Les questions de contrôle portent sur l'exemple fourni, pas sur ce dossier.",
-
-    couv: "Quels documents servent vraiment",
-    couvq: "Un document qui ne ressort jamais mérite un coup d'œil.",
-    figIssuesTitre: "Les 25 questions, une barre",
-    figIssuesAria: "Une barre partagée en quatre : réponses justes, réponses fausses, silences justifiés quand aucune réponse n'existait, et réponses inventées.",
-    figEchecsTitre: "Pourquoi ça rate",
-    figEchecsAria: "Barres du nombre d'échecs par motif.",
-    figCouvTitre: "Ce que l'index sert vraiment",
-    figCouvAria: "Barres du nombre de citations par document ; un document jamais cité est du poids mort dans l'index.",
-    segJustes: "juste", segRates: "raté", segSilence: "silence justifié", segInvente: "inventé",
-    motifSilence: "s'est tu alors qu'une réponse existait",
-    motifPassage: "bon document, mauvais passage",
-    motifDocument: "mauvais document en tête",
-    motCitations: "citations",
-    citations: (n) => `${n} réponse(s) trouvée(s) dedans`, jamaisCite: "n'a jamais servi",
-    nonLus: (n) => `${n} fichier(s) n'ont pas pu être lus — leurs informations ne sortiront jamais dans une réponse`,
-    pasAssez: (n) => `${n} question(s) posée(s). Il en faut une vingtaine avant que « n'a jamais servi » veuille dire quelque chose.`,
-
-    erreurs: {
-      dossier_introuvable: "Ce dossier n'existe pas. Vérifie le chemin.",
-      dossier_vide: "Aucun document lisible dans ce dossier — rien n'a été changé.",
-      aucun_document: "Commence par lire un dossier à l'étape 1.",
-      pas_indexe: "Prépare d'abord la recherche à l'étape 2.",
-      puces: "Ou choisis une question de contrôle :",
-      hors_demo: "Cette démonstration embarque les vecteurs de 25 questions, pas le modèle qui en calcule de nouveaux. Choisis une des questions de contrôle ci-dessous, ou clone le dépôt pour poser les tiennes.",
-      demo_fixe: "Cette démonstration tourne sur un corpus figé, déjà lu et déjà indexé. Clone le dépôt pour la pointer sur tes propres documents.",
-      aucun_dossier: "Aucun dossier chargé.",
-      question_vide: "Écris une question.",
-      inattendue: "Quelque chose s'est mal passé. Le détail est dans la console du serveur.",
-    },
-    resultat: "Résultat de la recherche", releve: "Relevé de contrôle",
-    voirCalcul: "Voir le calcul",
-    plusProcheDoc: "Passage le plus proche", proximiteMesuree: "Proximité mesurée",
-    barreReglee: "Barre d'exigence réglée",
-    ecartRefus: "Écart — réponse refusée", ecartReponse: "Marge — réponse produite",
-    colDoc: "document", colPassages: "passages", colCitations: "réponses trouvées dedans",
-    colReponses: "Total des réponses attribuées",
-    signature: (d, m, s2) => `dossier ${d} · ${m} passages · barre ${s2.toFixed(2)} · modèle multilingual-e5-small · traitement local`,
-    aucunPassage: "Aucun document ne répond à cette question.",
-    proximite: (s, t) => `Le passage le plus ressemblant est à ${s}, en dessous de l'exigence fixée à ${t}.`,
-    plusProche: "Voici quand même le plus proche, à toi de juger :",
-    page: "page", questions: "questions posées",
-    tresProche: "très proche", proche: "proche", eloigne: "éloigné",
-  },
-  en: {
     h1: "Document search",
     provenance: "Every figure on this page is <b>retrieved</b> from a public source, <b>measured</b> by running the code, <b>assumed</b> because nobody here can know it, or <b>chosen</b> by me. The README says which, one by one.",
     lede: "Ask a question about your documents. The tool shows the exact passage — and says when the answer isn't there.",
@@ -417,10 +320,8 @@ const T = {
     plusProche: "Here's the closest anyway — judge for yourself:",
     page: "page", questions: "questions asked",
     tresProche: "very close", proche: "close", eloigne: "distant",
-  },
 };
 
-let langue = localStorage.getItem("langue") ?? "en";
 let etat = { documents: [], ignores: [], morceaux: 0, indexe: false, pret: false, citations: {}, questions: 0 };
 let couverture = [];
 let nuage = [];
@@ -429,18 +330,16 @@ let jeu = [];
 let reponse = null;
 /** { etape, code } — une erreur s'affiche sous l'étape qui l'a produite, pas ailleurs. */
 let erreur = null;
+let minuterieSeuil = 0;
 let occupe = false;
 
-const t = () => T[langue];
+const t = () => T;
 
 function dessiner() {
   const L = t();
-  document.documentElement.lang = langue;
   $("#h1").textContent = L.h1;
   $("#provenanceLegende").innerHTML = L.provenance;
   $("#lede").textContent = L.lede;
-  $("#fr").className = langue === "fr" ? "on" : "";
-  $("#en").className = langue === "en" ? "on" : "";
 
   const lu = etat.documents.length > 0;
   const indexe = etat.indexe && etat.pret;
@@ -449,7 +348,7 @@ function dessiner() {
   /*
    * Pourquoi la barre est là où elle est.
    *
-   * Le curseur seul affiche un nombre — 0,84 — et rien ne dit ce qu'il achète. Les deux
+   * Un nombre seul — 0,84 — ne dit pas ce qu'il achète. Les deux
    * populations posées sur le même axe le disent d'un coup : elles se recouvrent, la barre
    * est dans le recouvrement, et aucune position ne sépare proprement. Chaque déplacement
    * échange un silence injustifié contre une réponse inventée. C'est le seul endroit de
@@ -467,7 +366,8 @@ function dessiner() {
         { nom: L.figPopHaut(avecReponse.length), valeurs: avecReponse.map((p) => p.score) },
         { nom: L.figPopBas(sansReponse.length), valeurs: sansReponse.map((p) => p.score), sens: "bas" },
       ],
-      seuil: { v: barre, etiquette: L.figPopBarre(barre.toFixed(2)), avant: L.figPopAvant, apres: L.figPopApres },
+      seuil: { v: barre, saisissable: true, etiquette: L.figPopBarre(barre.toFixed(2)),
+               avant: L.figPopAvant, apres: L.figPopApres },
       fmtX: (v) => v.toFixed(2),
       motRecouvrement: L.figPopRecouvrement,
       aria: L.figPopAria,
@@ -483,7 +383,7 @@ function dessiner() {
       ${lu ? "" : `<div style="margin-top:9px"><button class="b" id="exemple" ${occupe ? "disabled" : ""}>${esc(L.exemple)}</button></div>`}`,
       apres: blocErreur(1) + (lu ? blocCouverture() : "") },
 
-    { t: L.e2, q: indexe ? L.e2f(etat.morceaux, new Date(etat.construitLe).toLocaleString(langue === "fr" ? "fr-FR" : "en-GB")) : L.e2q,
+    { t: L.e2, q: indexe ? L.e2f(etat.morceaux, new Date(etat.construitLe).toLocaleString("en-GB")) : L.e2q,
       act: `<button class="b ${courante === 2 ? "suite" : ""}" id="indexer" ${!lu || occupe ? "disabled" : ""}>${occupe ? esc(L.calcul) : esc(L.construire)}</button>`,
       apres: blocErreur(2) },
 
@@ -504,13 +404,6 @@ function dessiner() {
       </div>
       <div style="margin-top:16px">
         <div class="titre" style="font-size:13.5px">${esc(L.seuil)}</div>
-        <div class="rang" style="margin-top:7px">
-          <span class="quoi" style="flex:0 0 auto;font-size:12px">${esc(L.seuilBas)}</span>
-          <input id="seuil" type="range" min="0.5" max="0.99" step="0.01" value="${etat.seuil ?? 0.84}"
-            aria-label="${esc(L.seuil)}"
-            style="flex:1;min-width:110px" ${!indexe ? "disabled" : ""} />
-          <span class="quoi" style="flex:0 0 auto;font-size:12px">${esc(L.seuilHaut)}</span>
-        </div>
         <div class="quoi" style="margin-top:5px">${esc(L.seuilQ)}</div>
         ${figPop}
       </div>
@@ -786,15 +679,29 @@ function brancher() {
   if (demander) demander.onclick = chercher;
   if (champ) champ.onkeydown = (e) => { if (e.key === "Enter") chercher(); };
 
-  const seuil = $("#seuil");
-  if (seuil) seuil.oninput = async () => {
-    $("#seuilVal").textContent = Number(seuil.value).toFixed(2);
-    clearTimeout(seuil._t);
-    seuil._t = setTimeout(async () => {
-      await api("/api/seuil", { seuil: Number(seuil.value) });
-      etat = await api("/api/etat");
-    }, 350);
-  };
+  /*
+   * La barre se tire entre les deux populations qu'elle sépare.
+   *
+   * C'était un curseur posé au-dessus de la figure — et il ne la redessinait même pas :
+   * il enregistrait la valeur côté serveur et attendait qu'autre chose provoque un rendu.
+   * Le lecteur bougeait le curseur et voyait le nuage immobile. Maintenant il attrape la
+   * barre, tout se recompte sous la main, et le serveur est prévenu à la fin du geste
+   * pour que la valeur survive à un rechargement.
+   *
+   * Le comptage se fait ici, sur le nuage déjà en mémoire : refaire un aller-retour par
+   * mouvement du doigt saccaderait, et rien d'autre sur l'écran ne dépend de la barre.
+   */
+  /* `saisir` ne fait rien s'il n'y a pas de prise : pas besoin de tester ici que la figure
+   * existe, et surtout pas avec des variables qui vivent dans le rendu, pas ici. */
+  const zonePop = $("#etapes");
+  if (zonePop) {
+    saisir(zonePop, ({ x }) => {
+      etat.seuil = Math.min(0.99, Math.max(0.5, x));
+      dessiner();
+      clearTimeout(minuterieSeuil);
+      minuterieSeuil = setTimeout(() => api("/api/seuil", { seuil: etat.seuil }), 260);
+    }, { x: etat.seuil ?? 0.84, nom: t().seuil });
+  }
 
   const addQ = $("#addQ");
   if (addQ) addQ.onclick = async () => {
@@ -813,10 +720,6 @@ function brancher() {
     occupe = false;
     dessiner();
   };
-}
-
-for (const l of ["fr", "en"]) {
-  $("#" + l).onclick = () => { langue = l; localStorage.setItem("langue", l); dessiner(); };
 }
 
 etat = await api("/api/etat");

@@ -647,7 +647,20 @@ async function rafraichirNuage() {
 function brancher() {
   const exemple = $("#exemple");
   if (exemple) exemple.onclick = () => {
-    $("#dossier").value = "~/Documents/rag/corpus";
+    /*
+     * Un chemin relatif, et pas celui de la machine qui a construit la page.
+     *
+     * Cette ligne posait le chemin absolu du corpus local. Elle est recopiee telle quelle
+     * dans la demo publique par publier.ts, donc quiconque lisait la page voyait ce chemin
+     * — et le nom du depot qu on garde prive. Releve le 22 aout 2026 par le controle de
+     * securite : c etait le seul chemin de fichier que la page publiee revelait, et il ne
+     * servait a rien la-bas, le shim rendant demo_fixe pour /api/lire sans jamais lire la
+     * valeur.
+     *
+     * Le serveur reel tourne depuis la racine du depot, donc ./corpus designe le meme
+     * dossier sans rien dire de la machine.
+     */
+    $("#dossier").value = "./corpus";
     $("#lire").click();
   };
 

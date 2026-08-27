@@ -49,7 +49,7 @@ let questions = 0;
 const cosinus = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
 
 const titreDe = (heading) =>
-  heading.split(" > ").filter((t) => !/^page \\d+$/.test(t)).pop() ?? "";
+  heading.split(" > ").filter((t) => !/^page \d+$/.test(t)).pop() ?? "";
 
 function chercher(snap, question, combien = 3) {
   const q = snap.questions[question];
@@ -198,7 +198,7 @@ window.LOCAL = async (chemin, corps) => {
         titre: titreDe(h.chunk.heading),
         texte: h.chunk.text,
         score: h.score,
-        page: Number(h.chunk.heading.match(/page (\\d+)/)?.[1]) || null,
+        page: Number(h.chunk.heading.match(/page (\d+)/)?.[1]) || null,
       })),
     };
   }
@@ -209,7 +209,8 @@ window.LOCAL = async (chemin, corps) => {
 /* Le shim est en place : l'écran peut partir. La balise classique qui a créé la promesse
  * s'exécute avant tout module, donc personne ne peut la manquer. */
 window.LOCAL_POSE && window.LOCAL_POSE();
-</script>\n<script type="module">
+</script>
+<script type="module">
 import { barres, empile, populations, saisir } from "./graphes.js";
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));

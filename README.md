@@ -98,8 +98,8 @@ is withdrawn rather than dressed up, and the tool now stays silent below twenty
 observations — the rule it already applied to its coverage panel, finally applied to itself.
 
 Right document in first position, on the nineteen answerable questions: **10 of 19
-[32–73]**. That interval is eighteen points wide in each direction, and it is printed
-because it is eighteen points wide.
+[32–73]**. That interval is twenty points wide in each direction, and it is printed
+because it is twenty points wide.
 
 ### The corpus cites real law
 

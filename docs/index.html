@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Document search — and the six questions it refuses</title>
+<title>Document search, and the six questions it refuses</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23fbfaf7'/%3E%3Crect x='2' y='4' width='12' height='1' fill='%23111'/%3E%3Crect x='2' y='7' width='12' height='1' fill='%23111'/%3E%3Crect x='2' y='11' width='12' height='2' fill='%23111'/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="registre.css" />
 </head>
@@ -16,9 +16,9 @@
     </div>
   </div>
 <p class="renvoi" style="margin-bottom:1.5rem">
-This runs entirely in your browser — no server, no data leaves your machine. The retrieval
+This runs entirely in your browser: no server, no data leaves your machine. The retrieval
 is the real one: same scoring, same bar, same refusal. What is <b>not</b> here is the
-118&nbsp;MB embedding model, so only the 25 evaluation questions below can be asked —
+118&nbsp;MB embedding model, so only the 25 evaluation questions below can be asked,
 <b>including the six the corpus cannot answer</b>, which are the ones worth clicking. To ask
 your own, <a href="https://github.com/ArslaneSempai-ui/compliance-document-search">clone the repository</a>.
 </p>
@@ -127,7 +127,7 @@ window.LOCAL = async (chemin, corps) => {
         absents++;
         if (hits.length === 0) abstient++;
         else echecs.push({
-          question: cas.question, famille: cas.kind ?? "—",
+          question: cas.question, famille: cas.kind ?? "n/a",
           motif: "answered when it should have stayed silent",
           attendu: "no answer", obtenu: hits[0].chunk.doc,
         });
@@ -139,12 +139,12 @@ window.LOCAL = async (chemin, corps) => {
       if (rang === 0) at1++;
       if (rang >= 0) at5++;
       else echecs.push({
-        question: cas.question, famille: cas.kind ?? "—",
+        question: cas.question, famille: cas.kind ?? "n/a",
         motif: hits.length === 0 ? "stayed silent when an answer existed"
           : hits[0].chunk.doc === cas.expected
             /* Pas de gabarit ici : ce shim vit lui-même dans un gabarit, et un accent
              * grave le refermerait au milieu. */
-            ? 'right document, but the passage does not contain "' + (cas.must ?? "—") + '"'
+            ? 'right document, but the passage does not contain "' + (cas.must ?? "n/a") + '"'
             : "wrong document in first place",
         attendu: cas.expected, obtenu: hits.length ? hits[0].chunk.doc : "rien",
       });
@@ -266,7 +266,7 @@ const api = async (chemin, corps) => {
 const T = {
     h1: "Document search",
     provenance: "Every figure on this page is <b>retrieved</b> from a public source, <b>measured</b> by running the code, <b>assumed</b> because nobody here can know it, or <b>chosen</b> by me. The README says which, one by one.",
-    lede: "Ask a question about your documents. The tool shows the exact passage — and says when the answer isn't there.",
+    lede: "Ask a question about your documents. The tool shows the exact passage, and says when the answer isn't there.",
 
     e1: "Your documents",
     e1q: "Point to the folder they're in. The tool reads PDF, Word, RTF and text.",
@@ -276,7 +276,7 @@ const T = {
 
     e2: "Prepare the search",
     e2q: "The tool reads each document and learns to find it by meaning, not by words.",
-    e2f: (n, d) => `Ready — ${n} chunks, prepared ${d}`,
+    e2f: (n, d) => `Ready: ${n} chunks, prepared ${d}`,
     construire: "Prepare", calcul: "Reading…",
 
     e3: "Ask a question",
@@ -287,7 +287,7 @@ const T = {
     e4q: "Write a few questions you already know the answer to: without them, nothing says whether a change improved or degraded anything.",
     mesurer: "Score itself on these",
     jeuPropre: (n) => `${n} check question(s) written for this folder`,
-    jeuLivre: "No check questions — the tool will use the example's",
+    jeuLivre: "No check questions; the tool will use the example's",
     ajouter: "Add", qNouvelle: "A question you know the answer to",
     docAttendu: "Which document? (leave empty if there is no answer)",
 
@@ -308,7 +308,7 @@ const T = {
     figPopSuite: (silences, inventions, n) =>
       `At this height, <b>${silences} silence(s) on questions whose answer existed</b>`
       + ` and <b>${inventions} invented answer(s)</b>. Raising the bar trades the second for the`
-      + ` first; lowering it does the reverse. On ${n} questions — a floor too low to settle fine`
+      + ` first; lowering it does the reverse. On ${n} questions: a floor too low to settle fine`
       + ` distinctions, and the figure says so rather than smoothing two curves.`,
 
     top1: "right answer first time", top5: "right answer in the top 3",
@@ -329,12 +329,12 @@ const T = {
     motifDocument: "wrong document in first place",
     motCitations: "citations",
     citations: (n) => `${n} answer(s) found in it`, jamaisCite: "never used",
-    nonLus: (n) => `${n} file(s) couldn't be read — their content will never appear in an answer`,
+    nonLus: (n) => `${n} file(s) couldn't be read: their content will never appear in an answer`,
     pasAssez: (n) => `${n} question(s) asked. About twenty are needed before "never used" means anything.`,
 
     erreurs: {
       dossier_introuvable: "That folder doesn't exist. Check the path.",
-      dossier_vide: "No readable document in that folder — nothing was changed.",
+      dossier_vide: "No readable document in that folder. Nothing was changed.",
       aucun_document: "Start by reading a folder in step 1.",
       pas_indexe: "Prepare the search in step 2 first.",
       puces: "Or pick a control question:",
@@ -348,13 +348,13 @@ const T = {
     voirCalcul: "Show the arithmetic",
     plusProcheDoc: "Closest passage", proximiteMesuree: "Closeness measured",
     barreReglee: "Confidence bar set",
-    ecartRefus: "Gap — answer refused", ecartReponse: "Margin — answer produced",
+    ecartRefus: "Gap: answer refused", ecartReponse: "Margin: answer produced",
     colDoc: "document", colPassages: "passages", colCitations: "answers found in it",
     colReponses: "Total answers attributed",
     signature: (d, m, s2) => `folder ${d} · ${m} passages · bar ${s2.toFixed(2)} · model multilingual-e5-small · local processing`,
     aucunPassage: "No document answers this question.",
     proximite: (s, t) => `The closest passage scores ${s}, below the ${t} bar you set.`,
-    plusProche: "Here's the closest anyway — judge for yourself:",
+    plusProche: "Here's the closest anyway; judge for yourself:",
     page: "page", questions: "questions asked",
     tresProche: "very close", proche: "close", eloigne: "distant",
 };
@@ -462,7 +462,7 @@ function dessiner() {
         ${e.apres ?? ""}
       </div>
     </section>`;
-  }).join("") + `<div class="signature">${esc(L.signature(etat.dossier ?? "—", etat.morceaux, etat.seuil ?? 0.84))}</div>`;
+  }).join("") + `<div class="signature">${esc(L.signature(etat.dossier ?? "n/a", etat.morceaux, etat.seuil ?? 0.84))}</div>`;
 
   brancher();
 }
@@ -509,7 +509,7 @@ function blocCouverture() {
         ? `<div class="renvoi">${esc(L.pasAssez(etat.questions))}</div>` : ""}
       ${etat.ignores?.length ? `<div class="renvoi defavorable">
         <b>${esc(L.nonLus(etat.ignores.length))}</b><br>
-        ${etat.ignores.map((i) => `${esc(i.nom)} — ${esc(i.raison)}`).join("<br>")}
+        ${etat.ignores.map((i) => `${esc(i.nom)}: ${esc(i.raison)}`).join("<br>")}
       </div>` : ""}
     </div>
   </section>`;
